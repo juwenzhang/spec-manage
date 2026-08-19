@@ -56,5 +56,9 @@ export default defineConfig({
   root: 'docs',
   title: 'lhx-spec-hub playground',
   description: `Live preview of specHubRspressPlugin rendering ${repos.length} repos synced straight from GitHub`,
+  // GitHub Pages 项目站点部署在 /spec-manage/ 子路径下，资源引用必须带此前缀，
+  // 否则浏览器会把 /static/... 解析到根路径导致 404。
+  // 仅在生产构建时启用，本地 dev 保持根路径访问。
+  base: '/spec-manage/',
   plugins: [specHubRspressPlugin({repos})]
 });
