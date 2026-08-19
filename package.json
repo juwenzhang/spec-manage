@@ -1,0 +1,24 @@
+{
+  "name": "@luhanxin/spec-hub-playground-rspress",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runnable example: @luhanxin/spec-hub-rspress-plugin rendering yjs-docs's real openspec/ content.",
+  "type": "module",
+  "scripts": {
+    "dev": "rspress dev",
+    "build": "rspress build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf doc_build"
+  },
+  "dependencies": {
+    "@luhanxin/spec-hub-core": "0.0.1",
+    "@luhanxin/spec-hub-rspress-plugin": "0.0.1",
+    "rspress": "^1.47.2"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
+    "@types/node": "^26.2.0",
+    "cli-progress": "^3.12.0",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,94 @@
+name: Deploy Docs to GitHub Pages
+
+on:
+  push:
+    branches: [master, main]
+    # 只在影响文档站构建的变更时触发。Rationale:
+    #   - docs/**                 → 站点内容
+    #   - spec-hub.config.yaml    → 决定从 GitHub 同步哪些仓库
+    #   - rspress.config.ts       → 同步/渲染逻辑所在
+    #   - package.json            → 构建脚本
+    #   - pnpm-lock.yaml          → 依赖图变化可能影响构建输出
+    #   - .github/workflows/deploy.yaml → 迭代部署流水线
+    paths:
+      - 'docs/**'
+      - 'spec-hub.config.yaml'
+      - 'rspress.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy.yaml'
+
+  schedule:
+    # 每日定时触发：UTC 00:30 = 北京时间 08:30
+    # 从 GitHub 重新同步仓库内容并重新构建部署，实现"每天升级"
+    - cron: '30 0 * * *'
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 发版并发不允许重叠（避免 Pages 部署互相覆盖）
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # 若 lastUpdated 启用需要完整 git log
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          # lockfileVersion 9.0，需要 pnpm 9+（参考脚本依赖 packageManager
+          # 字段，本项目未声明，故显式指定版本）
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Node 20 已在 GitHub Actions runner 上弃用，改用 24
+          node-version: 24
+          cache: pnpm
+
+      - name: Setup Pages
+        # Pages 必须先在仓库 Settings → Pages 里启用，并将 Source 选为
+        # "GitHub Actions"。不能使用 `enablement: true`：它需要带
+        # `administration:write` 的 PAT，默认 GITHUB_TOKEN 没有该权限。
+        # 若此步骤报 'Get Pages site failed'，修复方式是去 UI 里把 Source
+        # 切换为 "GitHub Actions" 一次。
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build with Rspress
+        # 构建时通过 spec-hub.config.yaml 从 GitHub 同步仓库内容
+        # （GitHubApiContentSource，无 git clone、全内存）
+        run: pnpm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: doc_build
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
